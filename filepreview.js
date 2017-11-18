@@ -79,6 +79,9 @@ module.exports = {
           if (options.width > 0 && options.height > 0) {
             convertArgs.splice(0, 0, '-resize', options.width + 'x' + options.height);
           }
+          if (options.autorotate) {
+            convertArgs.splice(0, 0, '-auto-orient');
+          }
           child_process.execFile('convert', convertArgs, function(error) {
             if (error) return callback(error);
             return callback();
