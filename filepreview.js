@@ -81,7 +81,7 @@ module.exports = {
         if ( fileType == 'video' ) {
           var ffmpegArgs = ['-y', '-i', input, '-vf', 'thumbnail', '-frames:v', '1', output];
           if (options.width > 0 && options.height > 0) {
-            ffmpegArgs.splice(4, 1, 'thumbnail,scale=' + options.width + ':' + options.height);
+            ffmpegArgs.splice(4, 1, 'thumbnail,scale=' + options.width + ':' + options.height + (options.forceAspect?':force_original_aspect_ratio=decrease':''));
           }
           child_process.execFile('ffmpeg', ffmpegArgs, function(error) {
             if (input_original.indexOf("http://") == 0 || input_original.indexOf("https://") == 0) {
@@ -97,6 +97,9 @@ module.exports = {
           var convertArgs = [input + '[0]', output];
           if (options.width > 0 && options.height > 0) {
             convertArgs.splice(0, 0, '-resize', options.width + 'x' + options.height);
+          }
+          if (options.autorotate) {
+            convertArgs.splice(0, 0, '-auto-orient');
           }
           if (options.quality) {
             convertArgs.splice(0, 0, '-quality', options.quality);
@@ -215,7 +218,7 @@ module.exports = {
       try {
         var ffmpegArgs = ['-y', '-i', input, '-vf', 'thumbnail', '-frames:v', '1', output];
         if (options.width > 0 && options.height > 0) {
-          ffmpegArgs.splice(4, 1, 'thumbnail,scale=' + options.width + ':' + options.height)
+          ffmpegArgs.splice(4, 1, 'thumbnail,scale=' + options.width + ':' + options.height + (options.forceAspect?':force_original_aspect_ratio=decrease':''));
         }
         child_process.execFileSync('ffmpeg', ffmpegArgs);
         if (input_original.indexOf("http://") == 0 || input_original.indexOf("https://") == 0) {
