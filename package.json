@@ -1,6 +1,6 @@
 {
   "name": "filepreview",
-  "version": "1.0.14",
+  "version": "1.0.15",
   "description": "A file preview generator for node.js",
   "main": "filepreview.js",
   "scripts": {
@@ -27,6 +27,7 @@
   },
   "homepage": "https://github.com/maxlabelle/filepreview#readme",
   "dependencies": {
+    "async": "^2.6.0",
     "synchronize": "^2.0.0"
   }
 }

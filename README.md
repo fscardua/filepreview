@@ -71,11 +71,12 @@ Synchronous (if error, will return false):
 
 You can specify a url instead of a file path, ie: http://www.myfile.com/my_file.doc, and filepreview will download it to generate its preview.
 
-You can set options object for the preview generation. List of options available:-
+You can set options object for the preview generation. List of options available:
 * width
 * height
 * quality [see quality documentation](https://www.imagemagick.org/script/command-line-options.php#quality)
 * background [see background documentation](https://www.imagemagick.org/script/command-line-options.php#background)
+* pagerange [specify pages to export (ie, for pages 1 to 2, pagerange: "1-2", for page 1 to 5, pagerange: "1-5") - for Office documents and PDFs only]
 
 e.g.
 ```javascript
@@ -83,7 +84,8 @@ var options = {
   width: 640,
   height: 480,
   quality: 90,
-  background: '#ffffff'
+  background: '#ffffff',
+  pagerange: '1-3'
 };
 
 // Asynchronous

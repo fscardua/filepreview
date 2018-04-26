@@ -6,6 +6,7 @@
 
 var child_process = require('child_process');
 var crypto = require('crypto');
+var async = require('async');
 var path = require('path');
 var fs = require('fs');
 var os = require('os');
@@ -33,6 +34,13 @@ module.exports = {
       extOutput != 'jpg' &&
       extOutput != 'png'
     ) {
+      return callback(true);
+    }
+
+    var fileArgs = [input_original];
+    var fileExecOutput = child_process.execFileSync('file', fileArgs);
+    var is_executable = fileExecOutput.toString().indexOf("executable");
+    if (parseInt(is_executable) > 0) {
       return callback(true);
     }
 
@@ -124,26 +132,68 @@ module.exports = {
 
           var tempPDF = path.join(os.tmpdir(), hash + '.pdf');
 
-          child_process.execFile('unoconv', ['-e', 'PageRange=1', '-o', tempPDF, input], function(error) {
-            if (error) return callback(error);
-            var convertOtherArgs = [tempPDF + '[0]', output];
-            if (options.width > 0 && options.height > 0) {
-              convertOtherArgs.splice(0, 0, '-resize', options.width + 'x' + options.height);
+          var unoconv_pagerange = '1';
+          var pagerange_start = 1;
+          var pagerange_stop = 1;
+          if (options.pagerange) {
+            var pagerange = options.pagerange.split("-");
+            if (pagerange.length == 2) {
+              unoconv_pagerange = options.pagerange;
+              pagerange_start = pagerange[0];
+              pagerange_stop = pagerange[1];
             }
-            if (options.quality) {
-              convertOtherArgs.splice(0, 0, '-quality', options.quality);
-            }
-            child_process.execFile('convert', convertOtherArgs, function(error) {
+          }
+
+          if (unoconv_pagerange == '1') {
+            child_process.execFile('unoconv', ['-e', 'PageRange='+unoconv_pagerange, '-o', tempPDF, input], function(error) {
               if (error) return callback(error);
-              fs.unlink(tempPDF, function(error) {
-                if (input_original.indexOf("http://") == 0 || input_original.indexOf("https://") == 0) {
-                  fs.unlinkSync(input);
-                }
+              var convertOtherArgs = [tempPDF + '[0]', output];
+              if (options.width > 0 && options.height > 0) {
+                convertOtherArgs.splice(0, 0, '-resize', options.width + 'x' + options.height);
+              }
+              if (options.quality) {
+                convertOtherArgs.splice(0, 0, '-quality', options.quality);
+              }
+              child_process.execFile('convert', convertOtherArgs, function(error) {
                 if (error) return callback(error);
-                return callback();
+                fs.unlink(tempPDF, function(error) {
+                  if (input_original.indexOf("http://") == 0 || input_original.indexOf("https://") == 0) {
+                    fs.unlink(input);
+                  }
+                  if (error) return callback(error);
+                  return callback();
+                });
               });
             });
-          });
+          } else {
+            child_process.execFile('unoconv', ['-e', 'PageRange='+unoconv_pagerange, '-o', tempPDF, input], function(error) {
+              if (error) return callback(error);
+              var pages = [];
+              for ( var x = 0; x < pagerange_stop; x++ ) { pages.push(x); }
+              async.eachSeries(pages, function iteratee(page, async_callback) {
+                var convertOtherArgs = [tempPDF + '['+page+']', page+'_'+output];
+                if (options.width > 0 && options.height > 0) {
+                  convertOtherArgs.splice(0, 0, '-resize', options.width + 'x' + options.height);
+                }
+                if (options.quality) {
+                  convertOtherArgs.splice(0, 0, '-quality', options.quality);
+                }
+                child_process.execFile('convert', convertOtherArgs, function(error) {
+                  if (error) return callback(error);
+                  return async_callback();
+                });
+              }, function done() {
+                fs.unlink(tempPDF, function(error) {
+                  if (input_original.indexOf("http://") == 0 || input_original.indexOf("https://") == 0) {
+                    fs.unlink(input);
+                  }
+                  if (error) return callback(error);
+                  return callback();
+                });
+              });
+            });
+          }
+
         }
       }
     });
@@ -165,6 +215,13 @@ module.exports = {
       extOutput != 'png'
     ) {
       return false;
+    }
+
+    var fileArgs = [input_original];
+    var fileExecOutput = child_process.execFileSync('file', fileArgs);
+    var is_executable = fileExecOutput.toString().indexOf("executable");
+    if (parseInt(is_executable) > 0) {
+      return callback(true);
     }
 
     var fileType = 'other';
@@ -261,17 +318,44 @@ module.exports = {
 
         var tempPDF = path.join(os.tmpdir(), hash + '.pdf');
 
-        child_process.execFileSync('unoconv', ['-e', 'PageRange=1', '-o', tempPDF, input]);
+        var unoconv_pagerange = '1';
+        var pagerange_start = 1;
+        var pagerange_stop = 1;
+        if (options.pagerange) {
+          var pagerange = options.pagerange.split("-");
+          if (pagerange.length == 2) {
+            unoconv_pagerange = options.pagerange;
+            pagerange_start = pagerange[0];
+            pagerange_stop = pagerange[1];
+          }
+        }
 
-        var convertOtherArgs = [tempPDF + '[0]', output];
-        if (options.width > 0 && options.height > 0) {
-          convertOtherArgs.splice(0, 0, '-resize', options.width + 'x' + options.height);
+        child_process.execFileSync('unoconv', ['-e', 'PageRange='+unoconv_pagerange, '-o', tempPDF, input]);
+
+        if (unoconv_pagerange == '1') {
+          var convertOtherArgs = [tempPDF + '[0]', output];
+          if (options.width > 0 && options.height > 0) {
+            convertOtherArgs.splice(0, 0, '-resize', options.width + 'x' + options.height);
+          }
+          if (options.quality) {
+            convertOtherArgs.splice(0, 0, '-quality', options.quality);
+          }
+          child_process.execFileSync('convert', convertOtherArgs);
+        } else {
+          for ( var x = 0; x < pagerange_stop; x++ ) {
+            var convertOtherArgs = [tempPDF + '['+x+']', x+'_'+output];
+            if (options.width > 0 && options.height > 0) {
+              convertOtherArgs.splice(0, 0, '-resize', options.width + 'x' + options.height);
+            }
+            if (options.quality) {
+              convertOtherArgs.splice(0, 0, '-quality', options.quality);
+            }
+            child_process.execFileSync('convert', convertOtherArgs);
+          }
         }
-        if (options.quality) {
-          convertOtherArgs.splice(0, 0, '-quality', options.quality);
-        }
-        child_process.execFileSync('convert', convertOtherArgs);
+
         fs.unlinkSync(tempPDF);
+
         if (input_original.indexOf("http://") == 0 || input_original.indexOf("https://") == 0) {
           fs.unlinkSync(input);
         }
